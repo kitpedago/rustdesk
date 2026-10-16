@@ -1,0 +1,77 @@
+# GD Remote — fork RustDesk auto-hébergé : suivi
+
+Serveur : `/opt/rustdesk-server` (compose). Fork client : `/opt/rustdesk`, branche `gd-remote` basée sur le tag upstream `1.5.0` ; `master` reste le miroir upstream (rebase de `gd-remote` à chaque montée de version).
+
+## Décisions (interview 2026-10-16)
+
+| Sujet | Décision |
+|---|---|
+| VPS | Cette machine : `vps-dcd1cc14`, OVH, 51.75.141.221 / 2001:41d0:305:2100::8994 |
+| Sous-domaine | `relay.gd.solutions` — DNS chez Gandi, configuré par gducos (A + AAAA) |
+| iOS contrôlé | Impossible (Apple), accepté. iOS contrôlant = client RustDesk officiel App Store, serveur saisi à la main. Aucun build iOS. |
+| Marque | « GD Remote », icône générée |
+| Licence / distribution | Installé chez des tiers = distribution GPLv3 : dépôt public GitHub + miroir `git.gd.solutions/in-set/rustdesk` |
+| Code-signing Windows | Certificat disponible (type OV/EV et support .pfx / token : à préciser en Phase 4) |
+| Apple Developer | Non |
+| Dimensionnement | < 50 machines, < 10 sessions simultanées |
+| Durcissement | Clé publique embarquée + 2FA client. Pas de whitelist d'ID (bloquerait les tiers du mode surveillé). WireGuard `wg0` déjà présent sur le VPS. |
+| Emplacements | Serveur : `/opt/rustdesk-server`. Fork client : `/opt/rustdesk` (clone), builds en CI uniquement (disque VPS à 89 %). |
+
+## Serveur
+
+- Image : `rustdesk/rustdesk-server:latest` = **1.1.16** (`sha256:8ecdab65deb7…`)
+- `network_mode: host` : ufw filtre réellement (le mode bridge contournerait ufw).
+- hbbs lancé sans `-r` : relais vide ⇒ le client utilise l'hôte du serveur d'ID. Pas de dépendance DNS côté serveur.
+- Ports : 21115–21119/tcp + 21116/udp ouverts dans ufw (v4 + v6). 21114 non utilisé (console Pro).
+- fail2ban + unattended-upgrades : déjà actifs sur l'hôte avant ce chantier.
+
+### Clé publique (data/id_ed25519.pub)
+
+```
+VwyJr+48t6JAThdLabq62oOcdRYivz0m4bPC9JFVZio=
+```
+
+Clé privée : `/opt/rustdesk-server/data/id_ed25519` (root). À sauvegarder : perdre la clé = re-déployer tous les clients.
+
+## Fork (Phase 3)
+
+Principe : **zéro modification du sous-module `libs/hbb_common`** (reste pointé sur upstream). Toute la personnalisation est dans le crate principal + ressources.
+
+| Point | Choix |
+|---|---|
+| Nom interne `APP_NAME` | `GD-Remote` (upstream n'accepte que alphanumérique + tiret : `lang.rs`). Sert pour le dossier `%APPDATA%\GD-Remote`, le service Windows, `GD-Remote.exe` après installation, le schéma URI `gd-remote://`. |
+| Nom affiché | « GD Remote » (label Android, ProductName Windows). Les chaînes UI « RustDesk … » sont réécrites à la volée par `src/lang.rs` dès que `APP_NAME` ≠ RustDesk. |
+| Serveur + clé | `src/common.rs::apply_fork_defaults()` appelé en tête de `load_custom_client()` : `APP_NAME`, `DEFAULT_SETTINGS[custom-rendezvous-server] = relay.gd.solutions`, `DEFAULT_SETTINGS[key] = clé publique`. Même levier que le `custom.txt` des clients Pro (dont la signature exige la clé privée de RustDesk, d'où le hardcode). Préremplit Paramètres › Réseau, reste modifiable. Pour verrouiller : passer en `OVERWRITE_SETTINGS` (Phase 5). |
+| Effet « custom client » | `is_custom_client()` devient vrai : plus de vérification de mise à jour upstream, mention « Powered by RustDesk » conservée (attribution GPL), compte à rebours anti-arnaque désactivé. |
+| Android | `applicationId solutions.gd.remote` (coexiste avec RustDesk officiel), labels, `android:scheme="gd-remote"`, strings.xml, notifications (`MainService.kt`, `BootReceiver.kt`), couleur de fond d'icône adaptative. Namespace Kotlin `com.carriez.flutter_hbb` inchangé. |
+| Windows | `Runner.rc` : ProductName, FileDescription, InternalName, OriginalFilename, CompanyName « GD Solutions », copyright avec attribution RustDesk. L'exe est encore produit comme `rustdesk.exe` par le build, renommé `GD-Remote.exe` à l'installation par le code upstream. |
+| Icônes | Monogramme « GD » blanc sur `#1F4E79`, généré par `res/gen_gd_remote_icons.sh` (ImageMagick) : res/*.png, res/icon.ico, tray-icon.ico, app_icon.ico Windows, mipmaps Android (launcher, round, foreground adaptatif, ic_stat), `flutter/assets/icon.svg`. SVG Linux (`res/scalable.svg`, `logo.svg`) non refaits : Linux hors cible. |
+| Modes | Aucune modification : défauts upstream = mot de passe **ou** clic d'acceptation. Parc = définir un mot de passe permanent fort à l'installation (`--password` en silencieux) → non surveillé. Tiers = lance l'app, donne son ID, accepte le clic → surveillé. |
+
+Dépôts distants (en attente, 2026-10-16) :
+- Forgejo : créer `in-set/rustdesk` vide dans l'UI (push-to-create désactivé pour les organisations), remote `forgejo` déjà configuré → `git push forgejo master gd-remote`.
+- GitHub : forker `rustdesk/rustdesk` (public) ou `gh auth login` sur le VPS, puis `git remote add github <url>` et `git push github master gd-remote`.
+
+## Avancement
+
+- [x] Phase 0 — ufw ouvert, Docker/Compose présents. **Reste :** DNS `relay.gd.solutions` (Gandi, gducos) ; vérifier dans le manager OVH que le pare-feu réseau (Edge) est désactivé ou ouvre les mêmes ports.
+- [x] Phase 1 — hbbs + hbbr up (1.1.16), clé notée, nc OK sur les 5 ports TCP + UDP depuis l'hôte.
+- [x] Phase 2 — baseline validée 2026-10-16 avec les clients officiels : les 8 tests de la matrice passent.
+- [x] Phase 3 — fork + rebranding + serveur préconfiguré (voir section Fork). Non compilé localement : vérification = build CI en Phase 4.
+- [ ] Phase 4 — builds Windows (signé) / Android ; CI GitHub Actions
+- [ ] Phase 5 — durcissement
+
+## Phase 2 — matrice de test (clients officiels, Paramètres › Réseau)
+
+ID Server = `relay.gd.solutions` · Relay Server = vide · Key = clé ci-dessus.
+
+| # | Test | Résultat |
+|---|---|---|
+| 1 | `nc -vz relay.gd.solutions 21115..21119` depuis l'extérieur | |
+| 2 | Windows A → Windows B, mot de passe permanent, sans clic sur B | |
+| 3 | Surveillé : écran d'acceptation sur B, refus puis accept | |
+| 4 | Presse-papier A→B et B→A | |
+| 5 | Android → Windows | |
+| 6 | Windows → Android (MediaProjection) | |
+| 7 | iOS → Windows (client officiel) | |
+| 8 | Relais forcé (deux NAT stricts, ou « toujours relayer » côté client) | |
