@@ -6,7 +6,7 @@
 # Usage: powershell -ExecutionPolicy Bypass -File res\gd-remote-sign.ps1 -Tag dev -Repo <owner>/rustdesk
 param(
   [Parameter(Mandatory)] [string] $Tag,
-  [Parameter(Mandatory)] [string] $Repo,
+  [string] $Repo = "kitpedago/rustdesk",
   [string] $Subject = "SARL IN SET",
   [string] $Timestamp = "http://time.certum.pl"
 )

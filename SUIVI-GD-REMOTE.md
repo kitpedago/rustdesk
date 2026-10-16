@@ -48,9 +48,10 @@ Principe : **zéro modification du sous-module `libs/hbb_common`** (reste point�
 | Icônes | Monogramme « GD » blanc sur `#1F4E79`, généré par `res/gen_gd_remote_icons.sh` (ImageMagick) : res/*.png, res/icon.ico, tray-icon.ico, app_icon.ico Windows, mipmaps Android (launcher, round, foreground adaptatif, ic_stat), `flutter/assets/icon.svg`. SVG Linux (`res/scalable.svg`, `logo.svg`) non refaits : Linux hors cible. |
 | Modes | Aucune modification : défauts upstream = mot de passe **ou** clic d'acceptation. Parc = définir un mot de passe permanent fort à l'installation (`--password` en silencieux) → non surveillé. Tiers = lance l'app, donne son ID, accepte le clic → surveillé. |
 
-Dépôts distants (en attente, 2026-10-16) :
-- Forgejo : créer `in-set/rustdesk` vide dans l'UI (push-to-create désactivé pour les organisations), remote `forgejo` déjà configuré → `git push forgejo master gd-remote`.
-- GitHub : forker `rustdesk/rustdesk` (public) ou `gh auth login` sur le VPS, puis `git remote add github <url>` et `git push github master gd-remote`.
+Dépôts distants (2026-10-16) :
+- GitHub (public, CI) : https://github.com/kitpedago/rustdesk — fork de rustdesk/rustdesk, branche par défaut `gd-remote`, remote `github`.
+- Forgejo (miroir) : https://git.gd.solutions/in-set/rustdesk — privé, branche par défaut `gd-remote`, remote `forgejo`.
+- Après chaque commit : `git push github gd-remote && git push forgejo gd-remote`.
 
 ## CI / builds (Phase 4)
 
@@ -62,11 +63,11 @@ GitHub Actions sur le fork (dépôt public = runners Windows/Linux gratuits). Ri
 | Workflow réutilisable | `flutter-build.yml` upstream réduit (2635 → 641 lignes) : `generate-bridge`, `TopMostWindow` x64, `build-for-windows-flutter` x64, `build-rustdesk-android` arm64. Jobs iOS/Linux/macOS/web/sciter/sbom/MSI supprimés. Autres workflows upstream (ci, nightly, tag, fdroid…) supprimés sur `gd-remote`. |
 | Windows | Installeur auto-extractible `GD-Remote-<ver>-x86_64.exe` (`libs/portable`). Signature `signtool` (SHA-256 + horodatage) des exe/dll puis de l'installeur, seulement si `WINDOWS_PFX_BASE64` est défini. MSI retiré : `res/msi/preprocess.py` suppose « RustDesk », à reprendre si déploiement GPO. |
 | Android | `GD-Remote-<ver>-aarch64.apk`, signé par `r0adkll/sign-android-release` avec le keystore ci-dessous. armv7/x86_64 retirés. |
-| Secrets GitHub | `ANDROID_SIGNING_KEY` (jks base64), `ANDROID_ALIAS`, `ANDROID_KEY_STORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `WINDOWS_PFX_BASE64`, `WINDOWS_PFX_PASSWORD`. Poussés par `/opt/rustdesk-secrets/set-github-secrets.sh <owner>/rustdesk`. |
+| Secrets GitHub | `ANDROID_SIGNING_KEY` (jks base64), `ANDROID_ALIAS`, `ANDROID_KEY_STORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `WINDOWS_PFX_BASE64`, `WINDOWS_PFX_PASSWORD`. Poussés par `/opt/rustdesk-secrets/set-github-secrets.sh kitpedago/rustdesk` (fait le 2026-10-16, secrets Android). |
 | Keystore Android | `/opt/rustdesk-secrets/gd-remote-android.jks` (PKCS12, alias `gd-remote`, RSA 4096, 10 000 j), mots de passe dans `android-keystore.env` (dossier 700, fichiers 600). **À sauvegarder hors VPS** : perdu = impossible de mettre à jour l'APK. |
-| Certificat Windows | **Certum Code Signing in the Cloud** (SimplySign), CN « SARL IN SET », 3 ans. Clé non exportable : pas de .pfx, pas de signature en CI. Flux : la CI publie `GD-Remote-<ver>-x86_64.exe` non signé → sur un PC Windows avec SimplySign Desktop connecté, `res/gd-remote-sign.ps1 -Tag <tag> -Repo <owner>/rustdesk` télécharge, signe (`signtool /n "SARL IN SET"`, horodatage `time.certum.pl`), vérifie et ré-uploade. Seul l'installeur est signé (suffit pour SmartScreen) ; les exe/dll internes restent non signés — amélioration possible : signer le dossier `rustdesk-unsigned-windows-x86_64` puis reconstruire le packer en local. Les étapes `.pfx` du workflow restent pour un éventuel autre certificat. |
+| Certificat Windows | **Certum Code Signing in the Cloud** (SimplySign), CN « SARL IN SET », 3 ans. Clé non exportable : pas de .pfx, pas de signature en CI. Flux : la CI publie `GD-Remote-<ver>-x86_64.exe` non signé → sur un PC Windows avec SimplySign Desktop connecté, `res/gd-remote-sign.ps1 -Tag <tag> -Repo kitpedago/rustdesk` télécharge, signe (`signtool /n "SARL IN SET"`, horodatage `time.certum.pl`), vérifie et ré-uploade. Seul l'installeur est signé (suffit pour SmartScreen) ; les exe/dll internes restent non signés — amélioration possible : signer le dossier `rustdesk-unsigned-windows-x86_64` puis reconstruire le packer en local. Les étapes `.pfx` du workflow restent pour un éventuel autre certificat. |
 
-En attente côté gducos : `gh auth login` **sous l'utilisateur `debian`** du VPS (aucune config gh trouvée pour debian ni root), puis : activer Actions sur le fork, branche par défaut `gd-remote`, `set-github-secrets.sh`, premier `workflow_dispatch`.
+gh connecté sur le VPS (compte `kitpedago`, device flow), Actions activées, secrets Android poussés, premier `workflow_dispatch` lancé le 2026-10-16 (tag `dev`).
 
 ## Avancement
 
