@@ -92,7 +92,7 @@ gh connecté sur le VPS (compte `kitpedago`, device flow), Actions activées, se
 - [x] Phase 2 — baseline validée 2026-10-16 avec les clients officiels : les 8 tests de la matrice passent.
 - [x] Phase 3 — fork + rebranding + serveur préconfiguré (voir section Fork). Non compilé localement : vérification = build CI en Phase 4.
 - [x] Phase 4 — CI verte le 2026-10-16 (run 38956935021, ~48 min à froid) : prerelease `dev` sur GitHub avec `GD-Remote-1.5.0-x86_64.exe` (25,8 Mo, non signé, à signer via `res/gd-remote-sign.ps1`) et `GD-Remote-1.5.0-aarch64-signed.apk` (28,7 Mo, signé CN=GD Remote, package `solutions.gd.remote`). Défaut corrigé ensuite : les propriétés de fichier de l'installeur venaient de `libs/portable/Cargo.toml` (winres) et disaient encore « RustDesk » → remplacées (build 2 relancé). **À valider par gducos** : installation Windows (nom, icône, serveur/clé préremplis, connexion au parc), APK Android (installation, nom, connexion).
-- [x] Phase 5 — serveur `-k _` + logs, mot de passe 12 car., script de rotation, verrou serveur/clé. Build 3 vert (run 38967136200, commit 3ae214afb) publié sur `dev` le 2026-10-16 21:46 UTC. **À valider par gducos** : Paramètres › Réseau grisés avec relay.gd.solutions + clé, refus d'un mot de passe permanent < 12 caractères, connexion parc OK, puis signature SimplySign de l'exe.
+- [x] Phase 5 — serveur `-k _` + logs, mot de passe 12 car., script de rotation, verrou serveur/clé. Build 3 vert (run 38967136200, commit 3ae214afb) publié sur `dev` le 2026-10-16 21:46 UTC. Validé par gducos (déclaré) le 2026-10-16 21:48 UTC : Réseau grisé, mot de passe court refusé, connexion parc OK. Signature SimplySign de l'exe et sauvegarde des clés hors VPS restent à sa charge.
 
 ## Restes (hors périmètre livré)
 
