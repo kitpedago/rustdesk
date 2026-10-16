@@ -341,6 +341,25 @@ jobs:
           mkdir -p ./SignOutput
           mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/GD-Remote-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
 
+      - name: Smoke-test installer (silent install on the runner)
+        if: env.UPLOAD_ARTIFACT == 'true'
+        continue-on-error: true
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem ./SignOutput/GD-Remote-*.exe | Select-Object -First 1 -ExpandProperty FullName
+          Write-Host "Installer: $installer"
+          $p = Start-Process -FilePath $installer -ArgumentList '--silent-install' -PassThru -Wait
+          Write-Host "silent-install exit code: $($p.ExitCode)"
+          Start-Sleep -Seconds 15
+          $dir = Join-Path $env:ProgramFiles 'GD-Remote'
+          Write-Host "Install dir exists: $(Test-Path $dir)"
+          if (Test-Path $dir) { Get-ChildItem $dir | Select-Object Name,Length | Format-Table -AutoSize | Out-String | Write-Host }
+          sc.exe query GD-Remote
+          Get-ChildItem -Recurse "$env:APPDATA\GD-Remote" -ErrorAction SilentlyContinue | Select-Object FullName,Length | Format-Table -AutoSize | Out-String | Write-Host
+          Get-ChildItem -Recurse "$env:APPDATA\GD-Remote" -Include *.log -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "=== $($_.FullName)"; Get-Content $_.FullName -Tail 80 }
+          if (-not (Test-Path (Join-Path $dir 'GD-Remote.exe'))) { Write-Error "GD-Remote.exe not installed"; exit 1 }
+
       - name: Sign installer
         if: env.UPLOAD_ARTIFACT == 'true' && env.WINDOWS_PFX_BASE64 != ''
         shell: pwsh
