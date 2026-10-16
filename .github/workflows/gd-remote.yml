@@ -1,0 +1,26 @@
+name: GD Remote build
+
+# Builds Windows x64 (portable installer, signed when WINDOWS_PFX_BASE64 is set)
+# and Android arm64 (APK signed with ANDROID_SIGNING_KEY), then publishes them
+# as a prerelease on the given tag.
+on:
+  workflow_dispatch:
+    inputs:
+      upload-tag:
+        description: "Release tag to publish to"
+        type: string
+        default: "dev"
+  push:
+    tags:
+      - "gd-[0-9]+.[0-9]+.[0-9]+*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/flutter-build.yml
+    secrets: inherit
+    with:
+      upload-artifact: true
+      upload-tag: ${{ github.event_name == 'push' && github.ref_name || inputs.upload-tag }}

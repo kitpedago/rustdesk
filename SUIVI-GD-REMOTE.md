@@ -52,13 +52,29 @@ Dépôts distants (en attente, 2026-10-16) :
 - Forgejo : créer `in-set/rustdesk` vide dans l'UI (push-to-create désactivé pour les organisations), remote `forgejo` déjà configuré → `git push forgejo master gd-remote`.
 - GitHub : forker `rustdesk/rustdesk` (public) ou `gh auth login` sur le VPS, puis `git remote add github <url>` et `git push github master gd-remote`.
 
+## CI / builds (Phase 4)
+
+GitHub Actions sur le fork (dépôt public = runners Windows/Linux gratuits). Rien ne se construit sur le VPS.
+
+| Point | Choix |
+|---|---|
+| Déclencheur | `.github/workflows/gd-remote.yml` : `workflow_dispatch` (tag `dev` par défaut) ou push d'un tag `gd-x.y.z`. Publie une prerelease GitHub sur ce tag. |
+| Workflow réutilisable | `flutter-build.yml` upstream réduit (2635 → 641 lignes) : `generate-bridge`, `TopMostWindow` x64, `build-for-windows-flutter` x64, `build-rustdesk-android` arm64. Jobs iOS/Linux/macOS/web/sciter/sbom/MSI supprimés. Autres workflows upstream (ci, nightly, tag, fdroid…) supprimés sur `gd-remote`. |
+| Windows | Installeur auto-extractible `GD-Remote-<ver>-x86_64.exe` (`libs/portable`). Signature `signtool` (SHA-256 + horodatage) des exe/dll puis de l'installeur, seulement si `WINDOWS_PFX_BASE64` est défini. MSI retiré : `res/msi/preprocess.py` suppose « RustDesk », à reprendre si déploiement GPO. |
+| Android | `GD-Remote-<ver>-aarch64.apk`, signé par `r0adkll/sign-android-release` avec le keystore ci-dessous. armv7/x86_64 retirés. |
+| Secrets GitHub | `ANDROID_SIGNING_KEY` (jks base64), `ANDROID_ALIAS`, `ANDROID_KEY_STORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `WINDOWS_PFX_BASE64`, `WINDOWS_PFX_PASSWORD`. Poussés par `/opt/rustdesk-secrets/set-github-secrets.sh <owner>/rustdesk`. |
+| Keystore Android | `/opt/rustdesk-secrets/gd-remote-android.jks` (PKCS12, alias `gd-remote`, RSA 4096, 10 000 j), mots de passe dans `android-keystore.env` (dossier 700, fichiers 600). **À sauvegarder hors VPS** : perdu = impossible de mettre à jour l'APK. |
+| Certificat Windows | Type à préciser. OV/.pfx : déposer `windows-codesign.pfx` + `windows-codesign.env` (`WINDOWS_PFX_PASSWORD=…`) dans `/opt/rustdesk-secrets`. EV sur token USB/HSM : inutilisable en CI → signer en local l'installeur téléchargé depuis la release (`signtool` sur le poste du token), ou Azure Trusted Signing. |
+
+En attente côté gducos : `gh auth login` **sous l'utilisateur `debian`** du VPS (aucune config gh trouvée pour debian ni root), dépôt Forgejo `in-set/rustdesk` (introuvable au 2026-10-16 16:15), puis : activer Actions sur le fork, branche par défaut `gd-remote`, `set-github-secrets.sh`, premier `workflow_dispatch`.
+
 ## Avancement
 
 - [x] Phase 0 — ufw ouvert, Docker/Compose présents. **Reste :** DNS `relay.gd.solutions` (Gandi, gducos) ; vérifier dans le manager OVH que le pare-feu réseau (Edge) est désactivé ou ouvre les mêmes ports.
 - [x] Phase 1 — hbbs + hbbr up (1.1.16), clé notée, nc OK sur les 5 ports TCP + UDP depuis l'hôte.
 - [x] Phase 2 — baseline validée 2026-10-16 avec les clients officiels : les 8 tests de la matrice passent.
 - [x] Phase 3 — fork + rebranding + serveur préconfiguré (voir section Fork). Non compilé localement : vérification = build CI en Phase 4.
-- [ ] Phase 4 — builds Windows (signé) / Android ; CI GitHub Actions
+- [~] Phase 4 — CI écrite et keystore généré ; aucun build exécuté (dépôts distants pas encore accessibles).
 - [ ] Phase 5 — durcissement
 
 ## Phase 2 — matrice de test (clients officiels, Paramètres › Réseau)
