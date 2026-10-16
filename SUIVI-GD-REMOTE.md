@@ -92,7 +92,15 @@ gh connecté sur le VPS (compte `kitpedago`, device flow), Actions activées, se
 - [x] Phase 2 — baseline validée 2026-10-16 avec les clients officiels : les 8 tests de la matrice passent.
 - [x] Phase 3 — fork + rebranding + serveur préconfiguré (voir section Fork). Non compilé localement : vérification = build CI en Phase 4.
 - [x] Phase 4 — CI verte le 2026-10-16 (run 38956935021, ~48 min à froid) : prerelease `dev` sur GitHub avec `GD-Remote-1.5.0-x86_64.exe` (25,8 Mo, non signé, à signer via `res/gd-remote-sign.ps1`) et `GD-Remote-1.5.0-aarch64-signed.apk` (28,7 Mo, signé CN=GD Remote, package `solutions.gd.remote`). Défaut corrigé ensuite : les propriétés de fichier de l'installeur venaient de `libs/portable/Cargo.toml` (winres) et disaient encore « RustDesk » → remplacées (build 2 relancé). **À valider par gducos** : installation Windows (nom, icône, serveur/clé préremplis, connexion au parc), APK Android (installation, nom, connexion).
-- [~] Phase 5 — serveur `-k _` + logs, mot de passe 12 car., script de rotation, verrou serveur/clé : commités ; build 3 à valider (Réseau grisé, mot de passe 12 car.).
+- [x] Phase 5 — serveur `-k _` + logs, mot de passe 12 car., script de rotation, verrou serveur/clé. Build 3 vert (run 38967136200, commit 3ae214afb) publié sur `dev` le 2026-10-16 21:46 UTC. **À valider par gducos** : Paramètres › Réseau grisés avec relay.gd.solutions + clé, refus d'un mot de passe permanent < 12 caractères, connexion parc OK, puis signature SimplySign de l'exe.
+
+## Restes (hors périmètre livré)
+
+- Signer aussi les exe/dll internes (aujourd'hui seul l'installeur est signé) : signer le dossier `rustdesk-unsigned-windows-x86_64` puis rebuild du packer en local.
+- MSI pour déploiement GPO : `res/msi/preprocess.py` suppose « RustDesk », à adapter.
+- Android armv7 / x86_64 si un terminal ancien l'exige (matrice CI).
+- Montée de version upstream : `git fetch` upstream, rebase de `gd-remote` sur le nouveau tag, vérifier `apply_fork_defaults`, `Runner.rc`, `libs/portable/Cargo.toml`, workflows ; tag `gd-x.y.z` pour une release.
+- Sauvegarde hors VPS de `/opt/rustdesk-server/data/id_ed25519*` et `/opt/rustdesk-secrets/` : toujours à faire.
 
 ## Phase 2 — matrice de test (clients officiels, Paramètres › Réseau)
 
