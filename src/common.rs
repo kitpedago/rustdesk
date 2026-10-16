@@ -2357,21 +2357,21 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
     ThrottledInterval::new(i)
 }
 
-// GD Remote fork: brand and default server/key baked in at startup.
-// Uses the same levers as custom.txt (APP_NAME + DEFAULT_SETTINGS), so the
-// network settings still show and allow overriding them. Switch to
-// OVERWRITE_SETTINGS to lock them.
+// GD Remote fork: brand, server and key baked in at startup.
+// OVERWRITE_SETTINGS locks them: the network settings show the values greyed
+// out, nobody can point the client at another server. Changing the server
+// therefore means shipping a new build.
 pub fn apply_fork_defaults() {
     *config::APP_NAME.write().unwrap() = "GD-Remote".to_owned();
-    let mut defaults = config::DEFAULT_SETTINGS.write().unwrap();
-    defaults.insert(
-        "custom-rendezvous-server".to_owned(),
-        "relay.gd.solutions".to_owned(),
-    );
-    defaults.insert(
-        "key".to_owned(),
-        "VwyJr+48t6JAThdLabq62oOcdRYivz0m4bPC9JFVZio=".to_owned(),
-    );
+    let mut fixed = config::OVERWRITE_SETTINGS.write().unwrap();
+    for (k, v) in [
+        ("custom-rendezvous-server", "relay.gd.solutions"),
+        ("relay-server", ""),
+        ("api-server", ""),
+        ("key", "VwyJr+48t6JAThdLabq62oOcdRYivz0m4bPC9JFVZio="),
+    ] {
+        fixed.insert(k.to_owned(), v.to_owned());
+    }
 }
 
 pub fn load_custom_client() {
