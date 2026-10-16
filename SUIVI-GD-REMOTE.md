@@ -69,6 +69,22 @@ GitHub Actions sur le fork (dépôt public = runners Windows/Linux gratuits). Ri
 
 gh connecté sur le VPS (compte `kitpedago`, device flow), Actions activées, secrets Android poussés, premier `workflow_dispatch` lancé le 2026-10-16 (tag `dev`).
 
+## Durcissement (Phase 5)
+
+| Mesure | État |
+|---|---|
+| Clients sans clé refusés | **Fait** : `hbbs -k _` et `hbbr -k _` (compose, 2026-10-16). Un client qui n'a pas la clé publique ne peut ni s'enregistrer ni relayer : le relais public ne sert qu'à nos clients. |
+| Clé embarquée = serveur | Par construction : le client vérifie la signature de hbbs avec la clé embarquée (`apply_fork_defaults`), un hbbs usurpé est rejeté. |
+| Chiffrement de bout en bout | Inchangé (upstream) : NaCl entre pairs, le relais ne voit que du chiffré ; l'échange des clés de pairs passe par hbbs, authentifié par la clé ci-dessus. |
+| Mot de passe permanent fort | **Fait** : règle client portée de 8 à 12 caractères minimum (+ chiffre, majuscule, minuscule, upstream). Dialogue commun desktop/mobile. |
+| Rotation | `res/gd-remote-set-password.ps1` (admin, sur la machine du parc) : génère 16 caractères, applique via `GD-Remote.exe --password`, affiche ID + mot de passe une fois. Fréquence conseillée : à chaque départ d'un intervenant, sinon annuelle. |
+| 2FA | Pas pré-configurable (secret TOTP par machine). Procédure : sur chaque machine du parc, Paramètres › Sécurité › « Activer 2FA », scanner le QR avec l'authentificateur de l'admin ; cocher « Appareils de confiance » pour ne pas ressaisir depuis les postes connus. |
+| Whitelist d'ID, VPN devant le relais | Non retenus (décision interview) : bloqueraient le mode surveillé avec des tiers. `wg0` reste disponible si un jour le parc seul doit être joignable. |
+| Journalisation | **Fait** : logs Docker json-file 5 × 20 Mo. `docker logs hbbr` trace chaque session relayée (ID de session, IP des deux pairs, fermeture). hbbs ne journalise pas les sessions P2P au niveau INFO ; chaque client Windows garde son propre journal de connexions (Paramètres › À propos › Journaux). Audit centralisé = console Pro, hors périmètre. |
+| Verrouiller serveur/clé dans le client | **À trancher** : passer `apply_fork_defaults` de `DEFAULT_SETTINGS` à `OVERWRITE_SETTINGS` grise les champs Paramètres › Réseau (ni le parc ni un tiers ne peuvent pointer ailleurs). Coût : changer de serveur = nouvelle version. Recommandé. |
+| Mises à jour | Client : plus de vérification upstream (custom client) ; publier une release GitHub `gd-x.y.z` et redéployer. Serveur : `cd /opt/rustdesk-server && docker compose pull && docker compose up -d`. OS : unattended-upgrades actif. |
+| Sauvegardes | `/opt/rustdesk-server/data/id_ed25519*` (clé serveur) et `/opt/rustdesk-secrets/` (keystore Android) : à copier hors VPS, aucune sauvegarde automatique en place. |
+
 ## Avancement
 
 - [x] Phase 0 — ufw ouvert, Docker/Compose présents. **Reste :** DNS `relay.gd.solutions` (Gandi, gducos) ; vérifier dans le manager OVH que le pare-feu réseau (Edge) est désactivé ou ouvre les mêmes ports.
@@ -76,7 +92,7 @@ gh connecté sur le VPS (compte `kitpedago`, device flow), Actions activées, se
 - [x] Phase 2 — baseline validée 2026-10-16 avec les clients officiels : les 8 tests de la matrice passent.
 - [x] Phase 3 — fork + rebranding + serveur préconfiguré (voir section Fork). Non compilé localement : vérification = build CI en Phase 4.
 - [x] Phase 4 — CI verte le 2026-10-16 (run 38956935021, ~48 min à froid) : prerelease `dev` sur GitHub avec `GD-Remote-1.5.0-x86_64.exe` (25,8 Mo, non signé, à signer via `res/gd-remote-sign.ps1`) et `GD-Remote-1.5.0-aarch64-signed.apk` (28,7 Mo, signé CN=GD Remote, package `solutions.gd.remote`). Défaut corrigé ensuite : les propriétés de fichier de l'installeur venaient de `libs/portable/Cargo.toml` (winres) et disaient encore « RustDesk » → remplacées (build 2 relancé). **À valider par gducos** : installation Windows (nom, icône, serveur/clé préremplis, connexion au parc), APK Android (installation, nom, connexion).
-- [ ] Phase 5 — durcissement
+- [~] Phase 5 — serveur `-k _` + logs faits, mot de passe 12 car. + script de rotation commités ; reste la décision de verrou serveur/clé, puis build.
 
 ## Phase 2 — matrice de test (clients officiels, Paramètres › Réseau)
 

@@ -900,7 +900,7 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
     UppercaseValidationRule(),
     LowercaseValidationRule(),
     // SpecialCharacterValidationRule(),
-    MinCharactersValidationRule(8),
+    MinCharactersValidationRule(12), // GD Remote: unattended fleet, longer minimum
   ];
   final maxLength = bind.mainMaxEncryptLen();
   final statusTip = localPasswordSet
