@@ -11,7 +11,7 @@ Serveur : `/opt/rustdesk-server` (compose). Fork client : `/opt/rustdesk`, branc
 | iOS contrôlé | Impossible (Apple), accepté. iOS contrôlant = client RustDesk officiel App Store, serveur saisi à la main. Aucun build iOS. |
 | Marque | « GD Remote », icône générée |
 | Licence / distribution | Installé chez des tiers = distribution GPLv3 : dépôt public GitHub + miroir `git.gd.solutions/in-set/rustdesk` |
-| Code-signing Windows | Certificat disponible (type OV/EV et support .pfx / token : à préciser en Phase 4) |
+| Code-signing Windows | Certum Code Signing in the Cloud (SimplySign), CN SARL IN SET, 3 ans — signature locale, voir Phase 4 |
 | Apple Developer | Non |
 | Dimensionnement | < 50 machines, < 10 sessions simultanées |
 | Durcissement | Clé publique embarquée + 2FA client. Pas de whitelist d'ID (bloquerait les tiers du mode surveillé). WireGuard `wg0` déjà présent sur le VPS. |
@@ -64,9 +64,9 @@ GitHub Actions sur le fork (dépôt public = runners Windows/Linux gratuits). Ri
 | Android | `GD-Remote-<ver>-aarch64.apk`, signé par `r0adkll/sign-android-release` avec le keystore ci-dessous. armv7/x86_64 retirés. |
 | Secrets GitHub | `ANDROID_SIGNING_KEY` (jks base64), `ANDROID_ALIAS`, `ANDROID_KEY_STORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `WINDOWS_PFX_BASE64`, `WINDOWS_PFX_PASSWORD`. Poussés par `/opt/rustdesk-secrets/set-github-secrets.sh <owner>/rustdesk`. |
 | Keystore Android | `/opt/rustdesk-secrets/gd-remote-android.jks` (PKCS12, alias `gd-remote`, RSA 4096, 10 000 j), mots de passe dans `android-keystore.env` (dossier 700, fichiers 600). **À sauvegarder hors VPS** : perdu = impossible de mettre à jour l'APK. |
-| Certificat Windows | Type à préciser. OV/.pfx : déposer `windows-codesign.pfx` + `windows-codesign.env` (`WINDOWS_PFX_PASSWORD=…`) dans `/opt/rustdesk-secrets`. EV sur token USB/HSM : inutilisable en CI → signer en local l'installeur téléchargé depuis la release (`signtool` sur le poste du token), ou Azure Trusted Signing. |
+| Certificat Windows | **Certum Code Signing in the Cloud** (SimplySign), CN « SARL IN SET », 3 ans. Clé non exportable : pas de .pfx, pas de signature en CI. Flux : la CI publie `GD-Remote-<ver>-x86_64.exe` non signé → sur un PC Windows avec SimplySign Desktop connecté, `res/gd-remote-sign.ps1 -Tag <tag> -Repo <owner>/rustdesk` télécharge, signe (`signtool /n "SARL IN SET"`, horodatage `time.certum.pl`), vérifie et ré-uploade. Seul l'installeur est signé (suffit pour SmartScreen) ; les exe/dll internes restent non signés — amélioration possible : signer le dossier `rustdesk-unsigned-windows-x86_64` puis reconstruire le packer en local. Les étapes `.pfx` du workflow restent pour un éventuel autre certificat. |
 
-En attente côté gducos : `gh auth login` **sous l'utilisateur `debian`** du VPS (aucune config gh trouvée pour debian ni root), dépôt Forgejo `in-set/rustdesk` (introuvable au 2026-10-16 16:15), puis : activer Actions sur le fork, branche par défaut `gd-remote`, `set-github-secrets.sh`, premier `workflow_dispatch`.
+En attente côté gducos : `gh auth login` **sous l'utilisateur `debian`** du VPS (aucune config gh trouvée pour debian ni root), puis : activer Actions sur le fork, branche par défaut `gd-remote`, `set-github-secrets.sh`, premier `workflow_dispatch`.
 
 ## Avancement
 
