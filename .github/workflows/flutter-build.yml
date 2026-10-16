@@ -351,15 +351,19 @@ jobs:
         run: |
           $installer = Get-ChildItem ./SignOutput/GD-Remote-*.exe | Select-Object -First 1 -ExpandProperty FullName
           Write-Host "Installer: $installer"
-          $p = Start-Process -FilePath $installer -ArgumentList '--silent-install' -PassThru -Wait
+          # No -Wait: it would also wait for the installed app that the installer launches and never exits.
+          $p = Start-Process -FilePath $installer -ArgumentList '--silent-install' -PassThru
+          if (-not $p.WaitForExit(180000)) { Write-Host 'installer still running after 180 s'; Stop-Process -Id $p.Id -Force }
           Write-Host "silent-install exit code: $($p.ExitCode)"
-          Start-Sleep -Seconds 15
+          Start-Sleep -Seconds 20
+          Get-Process -Name GD-Remote -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,StartTime | Format-Table -AutoSize | Out-String | Write-Host
           $dir = Join-Path $env:ProgramFiles 'GD-Remote'
           Write-Host "Install dir exists: $(Test-Path $dir)"
           if (Test-Path $dir) { Get-ChildItem $dir | Select-Object Name,Length | Format-Table -AutoSize | Out-String | Write-Host }
           sc.exe query GD-Remote
           Get-ChildItem -Recurse "$env:APPDATA\GD-Remote" -ErrorAction SilentlyContinue | Select-Object FullName,Length | Format-Table -AutoSize | Out-String | Write-Host
           Get-ChildItem -Recurse "$env:APPDATA\GD-Remote" -Include *.log -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "=== $($_.FullName)"; Get-Content $_.FullName -Tail 80 }
+          Stop-Process -Name GD-Remote -Force -ErrorAction SilentlyContinue
           if (-not (Test-Path (Join-Path $dir 'GD-Remote.exe'))) { Write-Error "GD-Remote.exe not installed"; exit 1 }
 
       - name: Sign installer
